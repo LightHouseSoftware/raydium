@@ -1,6 +1,6 @@
-module event.resize;
+module raydium.core.event.resize;
 
-import seb;
+import raydium.core;
 
 class ResizeEvent : Event
 {

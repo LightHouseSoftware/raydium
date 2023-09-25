@@ -1,16 +1,8 @@
-module component.container;
+module raydium.component.container;
 
-public
-{
-    import std.logger;
-    import std.algorithm;
-    
-    import bindbc.raylib;
-    import seb;
-
-    import types;
-    import event;
-}
+import raydium.core;
+import raydium.event;
+import std.algorithm;
 
 interface IContainer
 {

@@ -1,15 +1,10 @@
-module window;
+module raydium.core.window;
 
-import bindbc.raylib;
-import std.logger;
+import raydium.component;
+import raydium.core;
+import raydium.event;
+
 import std.algorithm;
-
-import component.container;
-import event.resize;
-
-
-import seb;
-
 
 class Window
 {

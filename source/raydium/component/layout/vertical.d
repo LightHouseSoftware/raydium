@@ -1,6 +1,7 @@
-module component.layout.vertical;
+module raydium.component.layout.vertical;
 
-import component.layout;
+import raydium.core;
+import raydium.component;
 
 class VerticalLayout : Layout
 {

@@ -1,15 +1,12 @@
-module types;
+module raydium.core.types;
 
 import std.variant;
 import std.algorithm;
-import std.algorithm.mutation;
 import std.typecons;
 import std.format;
-
-import bindbc.raylib;
-
 import std.traits;
-import std.math.constants;
+
+import raydium.core;
 
 struct BoxSpacing
 {

@@ -1,6 +1,7 @@
-module component.layout;
+module raydium.component.layout.layout;
 
-public import component.container;
+import raydium.core;
+import raydium.component;
 
 abstract class Layout : Container
 {
@@ -16,22 +17,25 @@ abstract class Layout : Container
 
     void addChild(T : Container)(T child)
     {
-        if(_childs.canFind!(a => a.id == child.id))
+        if (_childs.canFind!(a => a.id == child.id))
         {
-            errorf("Контейнер с id %s добавлен ранее, добавление дубликата отменено.", child.id);
+            errorf("Контейнер с id %s добавлен ранее, добавление дубликата отменено.", child
+                    .id);
             return;
         }
-        
+
         _childs ~= child;
 
         _dirty = true;
 
-        debug {
+        debug
+        {
             infof("Child container %s added for %s container", child.id, id);
         }
     }
 
-    void removeChild(T : Container)(T child){
+    void removeChild(T : Container)(T child)
+    {
         removeChild(child.id);
     }
 
@@ -39,7 +43,8 @@ abstract class Layout : Container
     {
         foreach (key, child; _childs)
         {
-            if(child.id == childId) {
+            if (child.id == childId)
+            {
                 _childs.remove(key);
                 _dirty = true;
             }

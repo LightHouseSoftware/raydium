@@ -1,6 +1,6 @@
-module math;
+module raydium.core.math;
 
-import bindbc.raylib;
+import raydium.core;
 import std.algorithm;
 
 Rectangle add(Rectangle a, Rectangle b)

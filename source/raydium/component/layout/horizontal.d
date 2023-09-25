@@ -1,6 +1,7 @@
-module component.layout.horizontal;
+module raydium.component.layout.horizontal;
 
-import component.layout;
+import raydium.core;
+import raydium.component;
 
 class HorizontalLayout : Layout
 {

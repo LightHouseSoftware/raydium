@@ -1,0 +1,8 @@
+name "raydium"
+description "Raylib based GUI library"
+authors "Bagomot"
+copyright "Copyright © 2023, LightHouse Software"
+license "MIT License"
+dependency "bindbc-raylib3" version="~>4.5.0"
+dependency "seb" version="~>0.3.1"
+libs "raylib"

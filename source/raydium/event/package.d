@@ -1,6 +1,6 @@
-module raydium.core.event;
+module raydium.event;
 
 public 
 {
-    import raydium.core.event.resize;
+    import raydium.event.resize;
 }

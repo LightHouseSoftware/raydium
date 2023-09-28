@@ -2,7 +2,6 @@ module raydium.core.window;
 
 import raydium.component;
 import raydium.core;
-import raydium.event;
 
 import std.algorithm;
 
@@ -58,11 +57,11 @@ class Window
 
         ClearBackground(RAYWHITE);
 
-        float screenScale = min(cast(float) GetScreenWidth() / _virtualWidth, cast(float) GetScreenHeight() / _virtualHeight);
+        // float screenScale = min(cast(float) GetScreenWidth() / _virtualWidth, cast(float) GetScreenHeight() / _virtualHeight);
 
-        SetMouseScale(1.0 / screenScale, 1.0 / screenScale);
-        SetMouseOffset(cast(int)(-(GetScreenWidth() - (_virtualWidth * screenScale)) * 0.5), cast(
-                int)(-(GetScreenHeight() - (_virtualHeight * screenScale)) * 0.5));
+        // SetMouseScale(1.0 / screenScale, 1.0 / screenScale);
+        // SetMouseOffset(cast(int)(-(GetScreenWidth() - (_virtualWidth * screenScale)) * 0.5), cast(
+        //         int)(-(GetScreenHeight() - (_virtualHeight * screenScale)) * 0.5));
     }
 
     void draw()
@@ -72,7 +71,11 @@ class Window
             _width = GetScreenWidth();
             _height = GetScreenHeight();
             ClearBackground(RAYWHITE);
-            EventBus.publish(new ResizeEvent(_width, _height));
+            if (_rootContainer !is null)
+            {
+                _rootContainer.measure(Rectangle(0, 0, _width, _height));
+                _rootContainer.dirty(true);
+            }
         }
 
         BeginDrawing();

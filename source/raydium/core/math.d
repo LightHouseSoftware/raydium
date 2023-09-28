@@ -36,10 +36,15 @@ Rectangle divide(Rectangle a, float value)
 
 bool intersect(Rectangle a, Rectangle b)
 {
-    return (a.x < b.x + b.width) &&
-        (a.x + a.width > b.x) &&
-        (a.y < b.y + b.height) &&
-        (a.y + a.height > b.y);
+    return (a.y < b.x + b.width) &&
+        (a.y + a.width > b.x) &&
+        (a.x < b.y + b.height) &&
+        (a.x + a.height > b.y);
+}
+
+bool intersect(Vector2 a, Rectangle b)
+{
+    return (a.x >= b.x && a.x <= b.width) && (a.y >= b.y && a.y <= b.height);
 }
 
 bool equals(Rectangle a, Rectangle b)

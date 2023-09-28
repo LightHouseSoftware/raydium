@@ -51,6 +51,18 @@ abstract class Layout : Container
         }
     }
 
+    override void dirty(bool value)
+    {
+        _dirty = value;
+        if(_dirty)
+        {
+            foreach (child; _childs)
+            {
+                child.dirty(true);
+            }
+        }
+    }
+
     Nullable!T findChildById(T : Container)(string childId)
     {
         return _childs.find!(a => a.id == childId);

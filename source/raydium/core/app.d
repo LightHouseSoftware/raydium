@@ -27,7 +27,6 @@ class Application {
 
 		scope (exit)
 		{
-			EventBus.stop;
 			CloseAudioDevice();
 			CloseWindow();
 			unloadRaylib();
@@ -62,8 +61,6 @@ class Application {
 		}
 
 		InitAudioDevice();
-
-		EventBus.start;
 
 		debug
 		{

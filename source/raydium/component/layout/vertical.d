@@ -36,4 +36,6 @@ class VerticalLayout : Layout
             currentY = y + h + prevMarginBottom;
         }
     }
+
+    override void update(){}
 }

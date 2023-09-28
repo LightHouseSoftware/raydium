@@ -1,7 +1,6 @@
 module raydium.component.container;
 
 import raydium.core;
-import raydium.event;
 import std.algorithm;
 
 interface IContainer
@@ -12,6 +11,7 @@ interface IContainer
     Style style();
     void dirty(bool value);
    
+    void update();
     void measure(Rectangle rect);
     void doArrange();
     void arrange();
@@ -34,11 +34,6 @@ abstract class Container : IContainer
     {
         _id = id;
         _style = Style.create.build;
-
-        EventBus.subscribe!ResizeEvent((event) {
-            this.measure(Rectangle(0, 0, event.width, event.height));
-            _dirty = true;
-        });
     }
 
     string id() @property const
@@ -96,6 +91,8 @@ abstract class Container : IContainer
 
     final void draw()
     {
+        update();
+
         if (_dirty)
             arrange();
 
@@ -107,6 +104,8 @@ abstract class Container : IContainer
 
         doDraw();
     }
+
+    abstract void update();
 
     protected Rectangle marginBox()
     {
@@ -175,7 +174,13 @@ abstract class Container : IContainer
         }
         else
         {
-            DrawRectangleRoundedLines(borderBox, style.borderRadius.top.value(_rect.height), 8, style.border.top.value(
+            Rectangle bbox = Rectangle(
+                        borderBox.x + style.border.left.value(_rect.width), 
+                        borderBox.y + style.border.top.value(_rect.height),
+                        borderBox.width - style.border.left.value(_rect.width) - style.border.right.value(_rect.width),
+                        borderBox.height - style.border.top.value(_rect.height) - style.border.bottom.value(_rect.height)
+            );
+            DrawRectangleRoundedLines(bbox, style.borderRadius.top.value(_rect.height), 8, style.border.top.value(
                     _rect.height), _style.border.color);
         }
     }

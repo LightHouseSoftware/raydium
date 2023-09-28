@@ -27,4 +27,8 @@ class HorizontalLayout : Layout
             currentX += w;
         }
     }
+
+    override void update()
+    {
+    }
 }

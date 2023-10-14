@@ -7,12 +7,12 @@ abstract class Layout : Container
 {
     protected
     {
-        IContainer[] _childs;
+        Container[] _childs;
     }
 
-    this(string id)
+    this(string id, string styleId = null)
     {
-        super(id);
+        super(id, styleId);
     }
 
     void addChild(T : Container)(T child)

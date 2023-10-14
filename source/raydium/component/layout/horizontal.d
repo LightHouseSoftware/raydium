@@ -1,13 +1,12 @@
 module raydium.component.layout.horizontal;
 
-import raydium.core;
 import raydium.component;
 
 class HorizontalLayout : Layout
 {
-    this(string id)
+    this(string id, string styleId = null)
     {
-        super(id);
+        super(id, styleId);
     }
 
     override void doArrange()
@@ -18,13 +17,26 @@ class HorizontalLayout : Layout
 
         foreach (key, child; _childs)
         {
-            float w = max(child.style.width.value(box.width), child.style.minWidth.value(box.width));
+            float width = 0;
+            float minWidth = 0;
+
+            auto w = child.property!Dimension(StyleProperty.width);
+            auto mw = child.property!Dimension(StyleProperty.minWidth);
+
+            if(!w.isNull)
+                width = w.get.toPixels(box.width);
+
+            if (!mw.isNull)
+                minWidth = mw.get.toPixels(box.width);
+
+            width = max(width, minWidth);
+
             if (_dirty)
             {
                 child.measure(Rectangle(currentX, box.y, box.width, box.height));
                 child.arrange;
             } 
-            currentX += w;
+            currentX += width;
         }
     }
 

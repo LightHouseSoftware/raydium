@@ -7,48 +7,51 @@ abstract class Widget : Container
 {
     private
     {
-        WidgetState _state;
         Signal!() _clickSignal; // Сигнал для оповещения о клике
         SignalConnection _clickConnection; // Соединение для сигнала
     }
 
-    this(string id = null)
+    this(string id = null, string styleId = null)
     {
-        super(id);
-    }
-
-    auto state() @property const
-    {
-        return _state;
-    }
-
-    void state(WidgetState value) @property
-    {
-        _state = value;
+        super(id, styleId);
     }
 
     override void update()
     {
         if (CheckCollisionPointRec(GetMousePosition(), borderBox))
         {
+            state = ContainerState.FOCUS;
+
             if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
             {
-                state = WidgetState.Active;
+                state = ContainerState.ACTIVE;
             }
-            else
-                state = WidgetState.Focus;
 
             if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
             {
-                state = WidgetState.Focus;
+                state = ContainerState.FOCUS;
                 _clickSignal.emit();
             }
+        }
+        else {
+            state = ContainerState.NORMAL;
         }
     }
 
     void onClick(void delegate() slot)
     {
-        _clickSignal.socket.connect(_clickConnection, slot);
+        void delegate() @system nothrow wrappedSlot = () nothrow {
+            try
+            {
+                slot();
+            }
+            catch (Exception e)
+            {
+                //TODO: Обработка исключения, возможно, с записью в лог или выводом предупреждения
+                // притом, тут только nothrow
+            }
+        };
+        _clickSignal.socket.connect(_clickConnection, wrappedSlot);
     }
 
     abstract void doArrange();

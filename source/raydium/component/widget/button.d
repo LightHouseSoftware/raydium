@@ -1,7 +1,6 @@
 module raydium.component.widget.button;
 
 import raydium.component;
-import raydium.core;
 
 class Button : Widget
 {
@@ -10,9 +9,9 @@ class Button : Widget
         string _text;
     }
 
-    this(string text = "", string id = null)
+    this(string text = "", string id = null, string styleId = null)
     {
-        super(id);
+        super(id, styleId);
         _text = text;
     }
 

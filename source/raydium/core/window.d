@@ -1,7 +1,6 @@
 module raydium.core.window;
 
 import raydium.component;
-import raydium.core;
 
 import std.algorithm;
 
@@ -11,7 +10,6 @@ class Window
     {
         string _title;
         uint _width, _height;
-        uint _virtualWidth, _virtualHeight;
         Container _rootContainer;
     }
 
@@ -27,9 +25,6 @@ class Window
     {
         this(title, width, height);
         SetConfigFlags(flags);
-        //SetConfigFlags(ConfigFlags.FLAG_WINDOW_HIGHDPI);
-        SetConfigFlags(ConfigFlags.FLAG_VSYNC_HINT);
-        SetConfigFlags(FLAG_MSAA_4X_HINT);
     }
 
     void setConfigFlags(ConfigFlags flags)
@@ -48,20 +43,8 @@ class Window
     {
         info("Show window...");
         InitWindow(_width, _height, _title.ptr);
-        
-        int m = GetCurrentMonitor();
-        _virtualWidth = GetMonitorWidth(m);
-        _virtualHeight = GetMonitorHeight(m);
-
         SetTargetFPS(60);
-
         ClearBackground(RAYWHITE);
-
-        // float screenScale = min(cast(float) GetScreenWidth() / _virtualWidth, cast(float) GetScreenHeight() / _virtualHeight);
-
-        // SetMouseScale(1.0 / screenScale, 1.0 / screenScale);
-        // SetMouseOffset(cast(int)(-(GetScreenWidth() - (_virtualWidth * screenScale)) * 0.5), cast(
-        //         int)(-(GetScreenHeight() - (_virtualHeight * screenScale)) * 0.5));
     }
 
     void draw()

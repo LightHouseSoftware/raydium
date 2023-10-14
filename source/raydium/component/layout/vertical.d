@@ -1,14 +1,13 @@
 module raydium.component.layout.vertical;
 
-import raydium.core;
 import raydium.component;
 
 class VerticalLayout : Layout
 {
     
-    this(string id)
+    this(string id, string styleId = null)
     {
-        super(id);
+        super(id, styleId);
     }
 
     override void doArrange()
@@ -20,9 +19,28 @@ class VerticalLayout : Layout
 
         foreach (key, child; _childs)
         {
-            float h = max(child.style.height.value(box.height), child.style.minHeight.value(box.height));
+            float height = 0;
+            float minHeight = 0;
+            
+            auto m = child.property!Dimensions(StyleProperty.margin);
+            auto h = child.property!Dimension(StyleProperty.height);
+            auto mh = child.property!Dimension(StyleProperty.minHeight);
+            
+            if (!h.isNull)
+                height = h.get.toPixels(box.height);
+
+            if (!mh.isNull)
+                minHeight = mh.get.toPixels(box.height);
+
+            height = max(height, minHeight);
+
+            if(height <= 0)
+            {
+                height = box.height;
+            }
+
             // Вычисляем позицию Y с учетом collapse                
-            float y = currentY + max(prevMarginBottom, child.style.margin.top.value(box.height));
+            float y = currentY + max(prevMarginBottom, (m.isNull) ? 0.0f : m.get.top.toPixels(box.height));
             
             if(_dirty)
             {
@@ -30,10 +48,10 @@ class VerticalLayout : Layout
                 child.arrange;
             }
 
-            prevMarginBottom = child.style.margin.bottom.value(box.height);
+            prevMarginBottom = (m.isNull) ? 0.0f : m.get.bottom.toPixels(box.height);
 
             // Переходим к следующему элементу                
-            currentY = y + h + prevMarginBottom;
+            currentY = y + height + prevMarginBottom;
         }
     }
 

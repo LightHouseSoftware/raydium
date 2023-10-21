@@ -10,6 +10,7 @@ public
     
     import raydium.core.window;
     import raydium.core.app;
+    import raydium.core.resource;
 
     alias Color = jsl.types.Color;
 }

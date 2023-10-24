@@ -8,17 +8,21 @@ import std.string;
 import std.algorithm;
 import std.zlib;
 import std.conv;
+import std.typecons;
 
 import botan.libstate.global_state;
 import botan.rng.rng;
 import botan.rng.auto_rng;
 import botan.constructs.cryptobox;
 
+import raydium.core;
+
 alias ResourceManager = ResourceManagerSingleton.instance;
 class ResourceManagerSingleton {
     private {
         __gshared ResourceManagerSingleton _instance;
-        ResourceIndex[][string] _indexes;
+        ResourceFile[string] _indexes;
+        CachedResource[string] _cache;
     }
 
     protected this() {
@@ -49,7 +53,7 @@ class ResourceManagerSingleton {
         }
     }
 
-    void loadResourceIndex(string path, string resId, string passPhrase = "")
+    void loadResourceFile(string path, string passPhrase = "")
     {
         path = buildNormalizedPath(path);
 
@@ -79,20 +83,51 @@ class ResourceManagerSingleton {
 
         indexRaw = prepareResource(indexRaw, encrypted, passPhrase);
 
-        _indexes[resId] ~= parseResourceIndex(indexRaw, header.length + indexLen);
+        _indexes[path] = ResourceFile(encrypted, passPhrase, parseResourceIndex(indexRaw, header.length + indexLen));
     }
 
-    //TODO: найти и прочитать файл
-    // распаковать
-    // расшифровать, если надо
-    // прочитать и расшифровать индекс
-    // по индексу найти сдвиг и длину файла
-    // считать и вернуть нужный диапазон байт из файла
+    RefCounted!(ubyte[]) resource(string id)
+    {
+        if (id in _cache)
+        {
+            return _cache[id].data;
+        }
+        
+        ResourceFile file;
+        string filePath;
 
-    // проблема в том, что файл сжат или даже зашифрован, поэтому невозможно считываь кусками
+        foreach (key, value; _indexes)
+        {
+            if(value.index.canFind!(a => a.id == id))
+            {
+                file = value;
+                filePath = key;
+                break;
+            }
+        }
+
+        if(!(file.index.empty || filePath.empty))
+        {
+            ResourceIndex index = file.index.find!(a => a.id == id)[0];
+
+            ubyte[] data = readBytesInRange(filePath, index.start, index.end);
+            data = prepareResource(data, file.encrypted, file.password);
+
+            if (!data.empty)
+            {
+                _cache[id] = CachedResource(RefCounted!(ubyte[])(data));
+            }
+
+            return _cache[id].data;
+        }
+
+        throw new Exception("Resource with id `" ~ id ~ "` not found");
+    }
 
     private ubyte[] prepareResource(ubyte[] data, bool encrypted = false, string passPhrase = "")
     {
+        if(data.empty) return data;
+
         data = cast(ubyte[]) uncompress(data);
         
         if (encrypted)
@@ -139,7 +174,7 @@ class ResourceManagerSingleton {
 
             if (i + 8 <= data.length)
             {
-                res.end = bytesToUlong(data[i .. i + 8]) + offset;
+                res.end = bytesToUlong(data[i .. i + 8]) + offset + res.start;
                 i += 8;
             }
             else
@@ -196,9 +231,21 @@ class ResourceManagerSingleton {
     
 }
 
+struct ResourceFile
+{
+    bool encrypted;
+    string password;
+    ResourceIndex[] index;
+}
+
 struct ResourceIndex
 {
     string id;
     size_t start;
     size_t end;
+}
+
+struct CachedResource
+{
+    RefCounted!(ubyte[]) data;
 }

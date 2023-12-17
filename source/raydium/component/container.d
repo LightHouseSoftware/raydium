@@ -3,6 +3,7 @@ module raydium.component.container;
 import raydium.component;
 
 import std.typecons;
+import std.string;
 
 enum ContainerState : string
 {
@@ -134,7 +135,7 @@ abstract class Container : IContainer
 
         _rect = Rectangle(rect.x, rect.y, width, height);
 
-        //infof("Measured id `%s`: (%f, %f, %f, %f)" , _id, rect.x, rect.y, width, height);
+        debug infof("Measured id `%s`: (%f, %f, %f, %f)" , _id, rect.x, rect.y, width, height);
     }
 
     final void arrange()
@@ -147,7 +148,7 @@ abstract class Container : IContainer
 
         doArrange();
 
-        infof("Arrange id `%s`: (%f, %f, %f, %f)", _id, _rect.x, _rect.y, _rect.width, _rect.height);
+        debug infof("Arrange id `%s`: (%f, %f, %f, %f)", _id, _rect.x, _rect.y, _rect.width, _rect.height);
 
         _dirty = false;
     }
@@ -241,29 +242,147 @@ abstract class Container : IContainer
 
     protected void drawBackground()
     {
-        auto backImage = property!string(StyleProperty.backgroundImage);
-        //TODO: gradient
-        auto backColor = property!Color(StyleProperty.backgroundColor);
+        //TODO: нужно сделать предзагрузку в кеш всех свойств темы и всех текстур, шейдеров, шрифтов и т.д.
 
-        auto borderRadius = property!BorderRadius(StyleProperty.borderRadius);
+        Nullable!string backImage = property!string(StyleProperty.backgroundImage);
+
+        Nullable!BorderRadius borderRadius = property!BorderRadius(StyleProperty.borderRadius);
 
         if(!backImage.isNull)
         {
-            //TODO: загрузка Texture2D из менеджера ресурсов
-            // if(borderRadius.isNull || borderRadius.get.empty)
-            // {
-            //     DrawTextureRec(texture, paddingBox, Vector2(0, 0), Colors.TRANSPARENT);
-            // }
-            // else
-            // {
-                
-            // }
-        }
-        // else if(!backGradient.isNull)
-        // {
+            //TODO: вынести инициализацию текстур в загрузчик темы
+            if(!ResourceCache.isTexture(backImage.get.toLower))
+            {
+                auto res = ResourceManager.resource(backImage.get.toLower); //TODO: сделать, чтобы в свойстве сразу было в нужном регистре
+                Image image = LoadImageFromMemory(res.ext.ptr, res.data.ptr, cast(int) res.data.length);
+                Texture2D texture = LoadTextureFromImage(image);
+                ResourceCache.texture(backImage.get.toLower, texture);
+                UnloadImage(image);
+            }
 
-        // }
-        else if (!backColor.isNull)
+            auto texture = ResourceCache.texture(backImage.get.toLower).get;
+
+            if(borderRadius.isNull || borderRadius.get.empty)
+            {
+                // отрисовка тестуры фона с рескалингом в нужный прямоугольник
+                DrawTexturePro(texture, Rectangle(0, 0, texture.width, texture.height), paddingBox, Vector2(0, 0), 0.0f, Colors.WHITE);
+            }
+            else
+            {
+                // if(!ResourceCache.isShader("borderRadius"))
+                // {
+                //     string fs = q{
+                //         #version 330 core
+
+                //         in vec2 fragTexCoord;
+                //         uniform sampler2D texture0;
+                //         uniform vec2 textureSize;
+                //         uniform float borderRadius;
+
+                //         out vec4 finalColor;
+
+                //         void main() {
+                //             // Texel color fetching from texture sampler
+                //             vec4 texelColor = texture(texture0, fragTexCoord);
+
+                //             // Calculate the pixel position within the texture
+                //             vec2 pos = fragTexCoord * textureSize;
+
+                //             // Calculate the distance from the edges
+                //             vec2 distFromEdge = min(pos, textureSize - pos);
+
+                //             // Check if we're within the border radius of a corner
+                //             bool withinBorderRadius = distFromEdge.x < borderRadius && distFromEdge.y < borderRadius;
+
+                //             // Calculate which corner we're in
+                //             vec2 cornerDist;
+                //             if (pos.x < borderRadius) {
+                //                 // Left side
+                //                 if (pos.y < borderRadius) {
+                //                     // Bottom left corner
+                //                     cornerDist = vec2(borderRadius) - distFromEdge;
+                //                 } else if (pos.y > textureSize.y - borderRadius) {
+                //                     // Top left corner
+                //                     cornerDist = pos - vec2(borderRadius, textureSize.y - borderRadius);
+                //                 }
+                //             } else if (pos.x > textureSize.x - borderRadius) {
+                //                 // Right side
+                //                 if (pos.y < borderRadius) {
+                //                     // Bottom right corner
+                //                     cornerDist = pos - vec2(textureSize.x - borderRadius, borderRadius);
+                //                 } else if (pos.y > textureSize.y - borderRadius) {
+                //                     // Top right corner
+                //                     cornerDist = textureSize - pos - vec2(borderRadius);
+                //                 }
+                //             }
+
+                //             // If we're within the border radius, calculate if we're inside the rounded corner
+                //             if (withinBorderRadius && length(cornerDist) > borderRadius) {
+                //                 finalColor = vec4(texelColor.rgb, 0.0); // Make pixel transparent
+                //             } else {
+                //                 finalColor = texelColor; // Keep original pixel
+                //             }
+                //         }
+                //     };
+
+                //     auto shader = LoadShaderFromMemory(null, fs.ptr);
+
+                //     auto br = cast(float)borderRadius.get.topLeft.toPixels(paddingBox.width);
+                //     //float[2] txSize = [texture.width, texture.height];
+                //     Vector2 txSize = {paddingBox.width, paddingBox.height};
+
+                //     SetShaderValue(shader, GetShaderLocation(shader, "borderRadius"), &br, SHADER_UNIFORM_FLOAT);
+                //     SetShaderValue(shader, GetShaderLocation(shader, "textureSize"), &txSize, SHADER_UNIFORM_VEC2);
+
+                //     ResourceCache.shader("borderRadius", shader);
+                // }
+
+                //auto shader = ResourceCache.shader("borderRadius").get;
+
+                //BeginBlendMode(BLEND_ALPHA);
+                //BeginShaderMode(shader);
+
+                //TODO: сделать материал и меш, и отрендерить меш вместо рендера текстуры
+
+                //DrawTexturePro(texture, Rectangle(0, 0, texture.width, texture.height), paddingBox, Vector2(0, 0), 0.0f, Colors.WHITE);
+
+                //EndShaderMode();
+                //EndBlendMode();
+            }
+
+            return;
+        }
+
+        Nullable!Gradient backGradient = property!Gradient(StyleProperty.backgroundGradient);
+        if(!backGradient.isNull)
+        {
+            Gradient gradient = backGradient.get;
+            if(gradient.type == GradientType.LINEAR)
+            {
+                if(gradient.isVertical)
+                {
+                    DrawRectangleGradientV(cast(int)paddingBox.x, cast(int)paddingBox.y, cast(int)paddingBox.width, cast(
+                            int)paddingBox.height, gradient.colors[0], gradient.colors[1]);
+                }
+                else 
+                {
+                    DrawRectangleGradientH(cast(int)paddingBox.x, cast(int)paddingBox.y, cast(int)paddingBox.width, cast(
+                            int)paddingBox.height, gradient.colors[0], gradient.colors[1]);
+                }
+            }
+            else if(gradient.type == GradientType.LINEAR)
+            {
+                DrawCircleGradient(cast(int)(paddingBox.width/2), cast(int)(paddingBox.height/2), 
+                    cast(int)(max(paddingBox.width, paddingBox.height)/2), 
+                    gradient.colors[0], gradient.colors[1]
+                );
+            }
+
+            return;
+        }
+
+        Nullable!Color backColor = property!Color(StyleProperty.backgroundColor);
+        if(!backColor.isNull)
         {
             if(borderRadius.isNull || borderRadius.get.empty)
             {
@@ -271,9 +390,10 @@ abstract class Container : IContainer
             }
             else 
             {
-                DrawRectangleRounded(paddingBox, borderRadius.get.topLeft.toPixels(_rect.height), 8, Colors
-                        .TRANSPARENT);
+                DrawRectangleRounded(paddingBox, borderRadius.get.topLeft.toPixels(_rect.height), 8, Colors.TRANSPARENT);
             }
+
+            return;
         }
     }
 

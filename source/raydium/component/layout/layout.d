@@ -19,7 +19,7 @@ abstract class Layout : Container
     {
         if (_childs.canFind!(a => a.id == child.id))
         {
-            errorf("Контейнер с id %s добавлен ранее, добавление дубликата отменено.", child
+            debug errorf("Контейнер с id %s добавлен ранее, добавление дубликата отменено.", child
                     .id);
             return;
         }
@@ -28,10 +28,7 @@ abstract class Layout : Container
 
         _dirty = true;
 
-        debug
-        {
-            infof("Child container %s added for %s container", child.id, id);
-        }
+        debug infof("Child container %s added for %s container", child.id, id);
     }
 
     void removeChild(T : Container)(T child)
@@ -68,15 +65,33 @@ abstract class Layout : Container
         return _childs.find!(a => a.id == childId);
     }
 
-    /// Компоновка дочерних элементов
-    abstract void doArrange();
-
-    /// Отрисовка дочерних элементов
-    void doDraw()
+    override void render()
     {
+        if (_dirty)
+            arrange();
+
+        auto visible = property!bool(StyleProperty.visible);
+        auto opacity = property!float(StyleProperty.opacity);
+        auto display = property!bool(StyleProperty.display);
+
+        if ((!visible.isNull && !visible.get) || (!opacity.isNull && opacity.get == 0) || (!display.isNull && !display
+                .get))
+            return;
+
+        // Рендерим фон
+        drawBackground();
+
+        // Рендерим рамку поверх фона
+        drawBorder();
+
+        // Рендерим контент
+        draw();
+
+        update();
+
         foreach (child; _childs)
         {
-            child.draw();
+            child.render();
         }
     }
 }

@@ -8,7 +8,9 @@ abstract class Widget : Container
     private
     {
         Signal!() _clickSignal; // Сигнал для оповещения о клике
+        Signal!int _keySignal;
         SignalConnection _clickConnection; // Соединение для сигнала
+        SignalConnection _keyConnection;
     }
 
     this(string id = null, string styleId = null)
@@ -16,18 +18,30 @@ abstract class Widget : Container
         super(id, styleId);
     }
 
+    @property ref SignalSocket!() clickSignal()
+    {
+        return _clickSignal.socket;
+    }
+
+    @property ref SignalSocket!int keySignal()
+    {
+        return _keySignal.socket;
+    }
+
     override void update()
     {
+        //TODO: проверка сложных фигур
+        //CheckCollisionPointPoly() 
         if (CheckCollisionPointRec(GetMousePosition(), borderBox))
         {
             state = ContainerState.FOCUS;
 
-            if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+            if (IsMouseButtonDown(MOUSE_LEFT_BUTTON))
             {
                 state = ContainerState.ACTIVE;
             }
 
-            if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
             {
                 state = ContainerState.FOCUS;
                 _clickSignal.emit();
@@ -51,9 +65,24 @@ abstract class Widget : Container
                 // притом, тут только nothrow
             }
         };
-        _clickSignal.socket.connect(_clickConnection, wrappedSlot);
+
+        clickSignal.connect(_clickConnection, wrappedSlot);
     }
 
-    abstract void doArrange();
-    abstract void doDraw();
+    void onKey(void delegate(int) slot)
+    {
+        void delegate(int) @system nothrow wrappedSlot = (int key) nothrow{
+            try
+            {
+                slot(key);
+            }
+            catch (Exception e)
+            {
+                // Обработка исключения, например, запись в лог или вывод предупреждения
+                // Так как обертка nothrow, исключения здесь обрабатываются, а не пробрасываются
+            }
+        };
+        
+        keySignal.connect(_keyConnection, wrappedSlot);
+    }
 }

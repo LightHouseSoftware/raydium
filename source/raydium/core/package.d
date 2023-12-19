@@ -2,7 +2,8 @@ module raydium.core;
 
 public
 {
-    import bindbc.raylib;
+    import raylib;
+    import bindbc.freetype;
     import jsl;
     import observable.signal;
 
@@ -11,6 +12,9 @@ public
     import raydium.core.window;
     import raydium.core.app;
     import raydium.core.resource;
+    import raydium.core.helpers;
 
     alias Color = jsl.types.Color;
+    alias Colors = jsl.types.Colors;
+    alias RayColors = raylib.raylib_types.Colors;
 }

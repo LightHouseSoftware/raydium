@@ -21,17 +21,14 @@ interface IContainer
     void styleId(string);
     string styleId();
     ContainerState state() @property const;
+    T property(T)(string name);
     void state(ContainerState value) @property;
     void dirty(bool value);
-   
     void update();
     void measure(Rectangle rect);
-    void doArrange();
     void arrange();
-    T property(T)(string name);
-
-    void doDraw();
     void draw();
+    void render();
 }
 
 abstract class Container : IContainer
@@ -98,67 +95,24 @@ abstract class Container : IContainer
         return false;
     }
 
-    void measure(Rectangle rect)
+    abstract void measure(Rectangle rect);
+    abstract void arrange();
+    abstract void update();
+    abstract void draw();
+
+    void render()
     {
-        float width = 0;
-        float height = 0;
-        float minWidth = 0;
-        float minHeight = 0;
-
-        auto w = property!Dimension(StyleProperty.width);
-        auto h = property!Dimension(StyleProperty.height);
-        auto mw = property!Dimension(StyleProperty.minWidth);
-        auto mh = property!Dimension(StyleProperty.minHeight);
-
-        if(!w.isNull)
-            width = w.get.toPixels(rect.width);
-
-        if(!h.isNull)
-            height = h.get.toPixels(rect.height);
-
-        if(!mw.isNull)
-            minWidth = mw.get.toPixels(rect.width);
-
-        if(!mh.isNull)
-            minHeight = mh.get.toPixels(rect.height);
-
-
-        // больше или равно минимальному, чек
-        width = max(width, minWidth);
-        height = max(height, minHeight);
-
-        // меньше или равно доступному, но больше нуля, чек
-        width = (width > 0) ? min(width, rect.width) : rect.width;
-        height = (height > 0) ? min(height, rect.height) : rect.height;
-
-        //TODO: применение выравнивания
-
-        _rect = Rectangle(rect.x, rect.y, width, height);
-
-        debug infof("Measured id `%s`: (%f, %f, %f, %f)" , _id, rect.x, rect.y, width, height);
-    }
-
-    final void arrange()
-    {
-        auto visible = property!bool(StyleProperty.visible);
-        auto opacity = property!float(StyleProperty.opacity);
-
-        if ((!visible.isNull && !visible.get) || (!opacity.isNull && opacity.get == 0))
-            return;
-
-        doArrange();
-
-        debug infof("Arrange id `%s`: (%f, %f, %f, %f)", _id, _rect.x, _rect.y, _rect.width, _rect.height);
-
-        _dirty = false;
-    }
-
-    final void draw()
-    {
-        update();
-
         if (_dirty)
             arrange();
+
+        auto visible = property!bool(StyleProperty.visible);
+        auto opacity = property!float(StyleProperty.opacity);
+        auto display = property!bool(StyleProperty.display);
+
+        if ((!visible.isNull && !visible.get) || (!opacity.isNull && opacity.get == 0) || (!display.isNull && !display.get))
+            return;
+
+        BeginScissorMode(cast(int) _rect.x, cast(int) _rect.y, cast(int) _rect.width, cast(int) _rect.height);
 
         // Рендерим фон
         drawBackground();
@@ -166,10 +120,13 @@ abstract class Container : IContainer
         // Рендерим рамку поверх фона
         drawBorder();
 
-        doDraw();
-    }
+        // Рендерим контент
+        draw();
 
-    abstract void update();
+        EndScissorMode();
+
+        update();
+    }
 
     protected Nullable!T property(T)(string name)
     {
@@ -362,15 +319,15 @@ abstract class Container : IContainer
                 if(gradient.isVertical)
                 {
                     DrawRectangleGradientV(cast(int)paddingBox.x, cast(int)paddingBox.y, cast(int)paddingBox.width, cast(
-                            int)paddingBox.height, gradient.colors[0], gradient.colors[1]);
+                            int)paddingBox.height + 1, gradient.colors[0], gradient.colors[1]);
                 }
                 else 
                 {
                     DrawRectangleGradientH(cast(int)paddingBox.x, cast(int)paddingBox.y, cast(int)paddingBox.width, cast(
-                            int)paddingBox.height, gradient.colors[0], gradient.colors[1]);
+                            int)paddingBox.height + 1, gradient.colors[0], gradient.colors[1]);
                 }
             }
-            else if(gradient.type == GradientType.LINEAR)
+            else if(gradient.type == GradientType.RADIAL)
             {
                 DrawCircleGradient(cast(int)(paddingBox.width/2), cast(int)(paddingBox.height/2), 
                     cast(int)(max(paddingBox.width, paddingBox.height)/2), 

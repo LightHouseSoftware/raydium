@@ -10,50 +10,70 @@ class VerticalLayout : Layout
         super(id, styleId);
     }
 
-    override void doArrange()
+    override void measure(Rectangle rect)
     {
+        _rect = rect;
+
         auto box = contentBox;
-        float currentY = box.y;
 
-        float prevMarginBottom = 0;
+        float totalFixedHeight = 0; // Суммарная высота всех элементов с фиксированной высотой
+        int numFlexChildren = 0; // Количество элементов без фиксированной высоты
 
-        foreach (key, child; _childs)
+        // Предварительный проход для расчета общей фиксированной высоты и подсчета "гибких" элементов
+        foreach (child; _childs)
         {
-            float height = 0;
-            float minHeight = 0;
-            
-            auto m = child.property!Dimensions(StyleProperty.margin);
             auto h = child.property!Dimension(StyleProperty.height);
-            auto mh = child.property!Dimension(StyleProperty.minHeight);
-            
-            if (!h.isNull)
-                height = h.get.toPixels(box.height);
 
-            if (!mh.isNull)
-                minHeight = mh.get.toPixels(box.height);
-
-            height = max(height, minHeight);
-
-            if(height <= 0)
+            if (h.isNull)
             {
-                height = box.height;
+                numFlexChildren++;
+            }
+            else
+            {
+                float height = min(h.get.toPixels(box.height), box.height);
+                totalFixedHeight += height;
+            }
+        }
+
+        float remainingHeight = box.height - totalFixedHeight; // Оставшееся пространство для "гибких" элементов
+        remainingHeight = max(0, remainingHeight);
+        float flexChildHeight = numFlexChildren > 0 ? remainingHeight / numFlexChildren : 0; // Высота для каждого "гибкого" элемента
+
+        float currentY = box.y;
+        foreach (child; _childs)
+        {
+            auto h = child.property!Dimension(StyleProperty.height);
+
+            float height;
+            if (h.isNull)
+            {
+                height = flexChildHeight; // Распределяем оставшееся пространство
+            }
+            else
+            {
+                height = min(h.get.toPixels(box.height), remainingHeight); // Используем фиксированную высоту, но не больше оставшегося пространства
             }
 
-            // Вычисляем позицию Y с учетом collapse                
-            float y = currentY + max(prevMarginBottom, (m.isNull) ? 0.0f : m.get.top.toPixels(box.height));
-            
-            if(_dirty)
-            {
-                child.measure(Rectangle(box.x, y, box.width, box.height));
-                child.arrange;
-            }
+            child.measure(Rectangle(box.x, currentY, box.width, height));
+                currentY += height; // Обновляем текущую Y-позицию
 
-            prevMarginBottom = (m.isNull) ? 0.0f : m.get.bottom.toPixels(box.height);
+            remainingHeight -= height; // Уменьшаем оставшееся пространство
+        }
 
-            // Переходим к следующему элементу                
-            currentY = y + height + prevMarginBottom;
+        debug infof("Container %s measured as Rect(%0.f, %0.f, %0.f, %0.f)", id, _rect.x, _rect.y, _rect.width, _rect.height);
+    }
+
+    override void arrange()
+    {
+        //TODO: расположение текущего виджета в его _rect
+
+        // расположение дочерних виджетов в их _rect
+        foreach (child; _childs)
+        {
+            child.arrange();
         }
     }
 
     override void update(){}
+    override void draw(){}
 }

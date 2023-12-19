@@ -9,6 +9,8 @@ import std.algorithm;
 import std.zlib;
 import std.conv;
 import std.typecons;
+import std.concurrency;
+import std.parallelism;
 
 import botan.libstate.global_state;
 import botan.rng.rng;
@@ -21,8 +23,7 @@ alias ResourceManager = ResourceManagerSingleton.instance;
 class ResourceManagerSingleton {
     private {
         __gshared ResourceManagerSingleton _instance;
-        ResourceFile[string] _indexes;
-        CachedResource[string] _cache;
+        Resource[][string] _indexes;
     }
 
     protected this() {
@@ -65,9 +66,11 @@ class ResourceManagerSingleton {
         {
             throw new FileException("File " ~ path ~ " not found");
         }
+
+        auto data = readToUbyteArray(path);
         
         // получить заголовок
-        auto header = readBytesInRange(path, 0, 15);
+        auto header = data[0 .. 15];
 
         if(header[0 .. 4] != "ARES".representation)
         {
@@ -79,46 +82,31 @@ class ResourceManagerSingleton {
 
         size_t indexLen = bytesToUlong(header[7 .. 15]); // длина индекса
 
-        auto indexRaw = readBytesInRange(path, header.length, header.length+indexLen);
+        data = data[15 .. $];
+        data = prepareResource(data, encrypted, passPhrase);
 
-        indexRaw = prepareResource(indexRaw, encrypted, passPhrase);
+        _indexes[path] = parse(data, indexLen);
 
-        _indexes[path] = ResourceFile(encrypted, passPhrase, parseResourceIndex(indexRaw, header.length + indexLen));
+        infof("Resource file `%s` has been loaded.", path);
     }
 
-    RefCounted!(ubyte[]) resource(string id)
+    Resource resource(string id)
     {
-        if (id in _cache)
+        if (ResourceCache.isResource(id))
         {
-            return _cache[id].data;
+            return ResourceCache.resource(id).get;
         }
-        
-        ResourceFile file;
-        string filePath;
 
         foreach (key, value; _indexes)
         {
-            if(value.index.canFind!(a => a.id == id))
+            if(value.canFind!(a => a.id == id))
             {
-                file = value;
-                filePath = key;
-                break;
+                auto res = value.find!(a => a.id == id)[0];
+                
+                ResourceCache.resource(id, res);
+
+                return ResourceCache.resource(id).get;
             }
-        }
-
-        if(!(file.index.empty || filePath.empty))
-        {
-            ResourceIndex index = file.index.find!(a => a.id == id)[0];
-
-            ubyte[] data = readBytesInRange(filePath, index.start, index.end);
-            data = prepareResource(data, file.encrypted, file.password);
-
-            if (!data.empty)
-            {
-                _cache[id] = CachedResource(RefCounted!(ubyte[])(data));
-            }
-
-            return _cache[id].data;
         }
 
         throw new Exception("Resource with id `" ~ id ~ "` not found");
@@ -138,20 +126,20 @@ class ResourceManagerSingleton {
         return data;
     }
 
-    private ResourceIndex[] parseResourceIndex(ubyte[] data, size_t offset)
+    private Resource[] parse(ubyte[] data, size_t indexLen)
     {
-        ResourceIndex[] resourceIndex;
+        Resource[] resources;
 
         size_t i = 0;
-        while (i < data.length)
+        while (i < indexLen)
         {
-            ResourceIndex res;
+            Resource res;
 
             // Получаем длину id
             ubyte idLength = data[i++];
 
             // Получаем id
-            if (i + idLength <= data.length)
+            if (i + idLength <= indexLen)
             {
                 res.id = cast(string) data[i .. i + idLength];
                 i += idLength;
@@ -161,20 +149,36 @@ class ResourceManagerSingleton {
                 throw new Exception("Invalid data: id length is inconsistent");
             }
 
-            // Получаем смещение
-            if (i + 8 <= data.length)
+            // Получаем длину ext
+            ubyte extLength = data[i++];
+
+            // Получаем ext
+            if (i + extLength <= indexLen)
             {
-                res.start = bytesToUlong(data[i .. i + 8]) + offset;
+                res.ext = cast(string) data[i .. i + extLength];
+                i += extLength;
+            }
+            else
+            {
+                throw new Exception("Invalid data: ext length is inconsistent");
+            }
+
+            // Получаем смещение
+            size_t start = 0;
+            if (i + 8 <= indexLen)
+            {
+                start = bytesToUlong(data[i .. i + 8]) + indexLen;
                 i += 8;
             }
             else
             {
-                throw new Exception("Invalid data: offset is inconsistent");
+                throw new Exception("Invalid data: indexLen is inconsistent");
             }
 
-            if (i + 8 <= data.length)
+            size_t end = 0;
+            if (i + 8 <= indexLen)
             {
-                res.end = bytesToUlong(data[i .. i + 8]) + offset + res.start;
+                end = bytesToUlong(data[i .. i + 8]) + start;
                 i += 8;
             }
             else
@@ -182,10 +186,12 @@ class ResourceManagerSingleton {
                 throw new Exception("Invalid data: size is inconsistent");
             }
 
-            resourceIndex ~= res;
+            res.data = data[start .. end];
+
+            resources ~= res;
         }
 
-        return resourceIndex.sort!((a,b) => a.id < b.id).array;
+        return resources.sort!((a,b) => a.id < b.id).array;
     }
 
     private ubyte[] readBytesInRange(string filePath, size_t start, size_t end)
@@ -205,6 +211,27 @@ class ResourceManagerSingleton {
         file.close();
 
         return buffer;
+    }
+
+    ubyte[] readToUbyteArray(string path)
+    {
+        if (!path.exists)
+        {
+            throw new Exception("File not found: " ~ path);
+        }
+
+        ubyte[] data;
+
+        ubyte[2048] buffer;
+        auto file = File(path, "rb");
+        while (!file.eof())
+        {
+            auto bytesRead = file.rawRead(buffer);
+            data ~= bytesRead;
+        }
+        file.close();
+
+        return data;
     }
 
     private ulong bytesToUlong(ubyte[] bytes)
@@ -228,24 +255,11 @@ class ResourceManagerSingleton {
             return result;
         }
     }
-    
 }
 
-struct ResourceFile
-{
-    bool encrypted;
-    string password;
-    ResourceIndex[] index;
-}
-
-struct ResourceIndex
+struct Resource
 {
     string id;
-    size_t start;
-    size_t end;
-}
-
-struct CachedResource
-{
-    RefCounted!(ubyte[]) data;
+    string ext;
+    ubyte[] data;
 }

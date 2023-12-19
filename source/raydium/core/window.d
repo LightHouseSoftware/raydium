@@ -10,21 +10,37 @@ class Window
     {
         string _title;
         uint _width, _height;
+        uint _minWidth, _minHeight;
         Container _rootContainer;
     }
 
-    this(string title, uint width, uint height)
+    this(string title, uint width, uint height, uint minWidth, uint minHeight, ConfigFlags flags)
+    {
+        SetConfigFlags(flags);
+        this(title, width, height, minWidth, minHeight);
+    }
+
+    this(string title, uint width, uint height, uint minWidth = 100, uint minHeight = 100)
     {
         _title = title;
         _width = width;
         _height = height;
+        _minWidth = minWidth;
+        _minHeight = minHeight;
         info("Initialization window...");
+        InitWindow(_width, _height, _title.ptr);
     }
 
     this(string title, uint width, uint height, ConfigFlags flags)
     {
-        this(title, width, height);
         SetConfigFlags(flags);
+        this(title, width, height, 100, 100);
+    }
+
+    void minSize(uint width, uint height) @property
+    {
+        _minWidth = width;
+        _minHeight = height;
     }
 
     void setConfigFlags(ConfigFlags flags)
@@ -42,9 +58,8 @@ class Window
     void show()
     {
         info("Show window...");
-        InitWindow(_width, _height, _title.ptr);
         SetTargetFPS(60);
-        ClearBackground(RAYWHITE);
+        ClearBackground(Colors.WHITE);
     }
 
     void draw()
@@ -53,7 +68,15 @@ class Window
         {
             _width = GetScreenWidth();
             _height = GetScreenHeight();
-            ClearBackground(RAYWHITE);
+            if (_width < _minWidth || _height < _minHeight)
+            {
+                // Установка нового размера окна, если он меньше минимального
+                SetWindowSize(max(_width, _minWidth), max(_height, _minHeight));
+                _width = GetScreenWidth();
+                _height = GetScreenHeight();
+            }
+
+            ClearBackground(RayColors.RAYWHITE);
             if (_rootContainer !is null)
             {
                 _rootContainer.measure(Rectangle(0, 0, _width, _height));
@@ -61,17 +84,18 @@ class Window
             }
         }
 
-        BeginDrawing();
+        BeginDrawing;
 
         if(_rootContainer !is null)
         {
-            _rootContainer.draw();
+            _rootContainer.render();
         }
 
         debug {
             DrawFPS(_width - 80, 10);
         }
 
-        EndDrawing();
+        scope (exit)
+            EndDrawing;
     }
 }

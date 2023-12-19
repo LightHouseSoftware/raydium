@@ -19,6 +19,11 @@ class Application {
 		_window = new Window(title, width, height, flags);
 	}
 
+	void setMinSize(uint width, uint height) @property
+	{
+		window.minSize(width, height);
+	}
+
 	Window window() { return _window; }
 
 	void run()
@@ -29,7 +34,6 @@ class Application {
 		{
 			CloseAudioDevice();
 			CloseWindow();
-			unloadRaylib();
 		}
 
 		_window.show();
@@ -42,29 +46,19 @@ class Application {
 
 	private void initialization()
 	{
-		info("Initialization...");
-
-		RaylibSupport retVal = loadRaylib();
-		if (retVal != raylibSupport)
-		{
-			if (retVal == RaylibSupport.noLibrary)
-			{
-				throw new Exception("raylib shared library failed to load");
-			}
-			else if (retVal == RaylibSupport.badLibrary)
-			{
-				throw new Exception("One or more symbols failed to load. The likely cause is that the shared library is for a lower version than bindbc-raylib was configured to load.");
-			}
-			else {
-				throw new Exception("Unknown error with raylib load");
-			}
-		}
-
+		validateRaylibBinding();
 		InitAudioDevice();
-
-		debug
-		{
-			info("Loaded: ", loadedRaylibVersion);
-		}
+		// FTSupport ret = loadFreeType();
+		// if (ret != ftSupport)
+		// {
+		// 	if (ret == FTSupport.noLibrary)
+		// 	{
+		// 		throw new Exception("FreeType shared library failed to load");
+		// 	}
+		// 	else if (FTSupport.badLibrary)
+		// 	{
+		// 		throw new Exception("FreeType shared library error: one or more symbols failed to load.");
+		// 	}
+		// }
 	}
 }
